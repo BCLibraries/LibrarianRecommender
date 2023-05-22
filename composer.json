@@ -1,0 +1,27 @@
+{
+  "name": "bclibraries/librarian-recommender",
+  "description": "Backend to BC Libraries bento search",
+  "authors": [
+    {
+      "name": "Benjamin Florin",
+      "email": "benjamin.florin@bc.edu"
+    }
+  ],
+  "type": "project",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "BCLibraries\\LibrarianRecommender\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "BCLibraries\\LibrarianRecommender\\Tests\\": "tests/"
+    }
+  },
+  "require": {
+    "rubix/ml": "^2.3",
+    "ext-pdo": "*",
+    "ext-curl": "*"
+  }
+}

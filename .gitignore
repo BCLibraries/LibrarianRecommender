@@ -1,0 +1,5 @@
+vendor
+*.db
+*.sqlite
+*.sqlite3
+.env.local
