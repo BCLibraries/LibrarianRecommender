@@ -39,18 +39,37 @@ class AlmaClient
     {
         $query_params = [
             'direction' => 'ASC',
-            'order_by'  => 'code,section',
-            'offset'    => $offset,
-            'limit'     => $limit
+            'order_by' => 'code,section',
+            'offset' => $offset,
+            'limit' => $limit
         ];
         $result = $this->sendRequest('courses', $query_params);
-        $remaining = $result['total_record_count'] - ($offset * $limit);
+        $has_more_courses = $result['total_record_count'] > $offset + $limit;
 
         $courses = [];
         foreach ($result['course'] as $course_json) {
             $courses[] = new Course($course_json['id'], $course_json['name'], $course_json['code']);
         }
-        return new CourseList($courses, $offset, $remaining);
+        return new CourseList($courses, $offset, $has_more_courses);
+    }
+
+    /**
+     * @param string $course_id
+     * @return Reading[]
+     */
+    private function loadReadingList(string $course_id): array
+    {
+        $readings = [];
+        $query_params = [
+            'view' => 'full'
+        ];
+        $result = $this->sendRequest($course_id, $query_params);
+        foreach ($result['reading_lists']['reading_list'] as $reading_list) {
+            foreach ($reading_list['citations']['citation'] as $citation) {
+                $readings[] = Reading::build($citation);
+            }
+        }
+        return $readings;
     }
 
     /**

@@ -3,3 +3,5 @@ vendor
 *.sqlite
 *.sqlite3
 .env.local
+
+.idea

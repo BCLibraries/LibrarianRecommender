@@ -22,8 +22,8 @@ $client = new AlmaClient($env_vals['ALMA_COURSES_APIKEY']);
 
 $offset = 0;
 $courses = $client->nextCourses($offset);
-while ($courses->getRemaining() > 0) {
-    sleep(2);
+while ($courses->hasMoreCourses() > 0) {
+    $client->nextCourses($courses->getNextOffset());
 }
 
 /**

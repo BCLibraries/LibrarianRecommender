@@ -22,6 +22,7 @@
   "require": {
     "rubix/ml": "^2.3",
     "ext-pdo": "*",
-    "ext-curl": "*"
+    "ext-curl": "*",
+    "php": ">=8.2"
   }
 }

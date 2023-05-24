@@ -7,18 +7,18 @@ class CourseList
     /** @var Course[] */
     private array $courses;
     private int $offset;
-    private int $remaining;
+    private bool $is_finished;
 
     /**
      * @param Course[] $courses
      * @param int $offset
-     * @param int $remaining
+     * @param bool $has_more_courses
      */
-    public function __construct(array $courses, int $offset, int $remaining)
+    public function __construct(array $courses, int $offset, bool $has_more_courses)
     {
         $this->courses = $courses;
         $this->offset = $offset;
-        $this->remaining = $remaining;
+        $this->is_finished = $has_more_courses;
     }
 
     /**
@@ -29,14 +29,15 @@ class CourseList
         return $this->courses;
     }
 
-    public function getOffset(): int
+    public function getNextOffset(): int
     {
-        return $this->offset;
+        $num_courses = count($this->courses);
+        return ($this->is_finished === 0) ? $this->offset : $this->offset + $num_courses;
     }
 
-    public function getRemaining(): int
+    public function hasMoreCourses(): bool
     {
-        return $this->remaining;
+        return $this->is_finished;
     }
 
 
