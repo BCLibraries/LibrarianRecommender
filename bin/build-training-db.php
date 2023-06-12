@@ -1,6 +1,9 @@
 <?php
 
+use BCLibraries\LibrarianRecommender\Environment;
 use BCLibraries\LibrarianRecommender\Trainer\AlmaClient;
+use BCLibraries\LibrarianRecommender\Trainer\APIClient;
+use BCLibraries\LibrarianRecommender\Trainer\TrainingDatabase;
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
@@ -9,38 +12,30 @@ require_once __DIR__ . '/../vendor/autoload.php';
  * ENV files are given precedence over the base, and actual ENV values are
  * given precedence over everything.
  */
-const ENV_FILE = __DIR__ . '/../.env';
-const LOCAL_ENV_FILE = __DIR__ . '/../.env.local';
+$env_vals = Environment::load();
 
-$env_vals = build_env_vals();
+if (!isset($env_vals['TRAINING_DB_NAME'])) {
+    throw new Exception("No tranining DB found");
+}
 
-if (! isset($env_vals['ALMA_COURSES_APIKEY'])) {
+$full_db_path = __DIR__ . "/../data/{$env_vals['TRAINING_DB_NAME']}";
+$db = new TrainingDatabase($full_db_path);
+
+if (!isset($env_vals['ALMA_COURSES_APIKEY'])) {
     throw new Exception("No Alma courses API key set");
 }
 
-$client = new AlmaClient($env_vals['ALMA_COURSES_APIKEY']);
+$api_client = new APIClient();
+$alma_client = new AlmaClient($api_client, $env_vals['ALMA_COURSES_APIKEY']);
 
-$offset = 0;
-$courses = $client->nextCourses($offset);
-while ($courses->hasMoreCourses() > 0) {
-    $client->nextCourses($courses->getNextOffset());
-}
-
-/**
- * Build the array of env values
- *
- * @return array
- * @throws Exception
- */
-function build_env_vals(): array
-{
-    $base_env = parse_ini_file(ENV_FILE);
-    $local_env = file_exists(LOCAL_ENV_FILE) ? parse_ini_file(LOCAL_ENV_FILE) : [];
-
-    $env_vals = array_merge($base_env, $local_env, $_ENV);
-    if ($env_vals === false) {
-        throw new \Exception("Error building ENV values");
+$offset = 15099;
+$courses = $alma_client->nextCourses($offset);
+while ($courses->has_more_courses) {
+    echo "Writing...\n";
+    foreach ($courses->courses as $course) {
+        echo "\tadding {$course->code} to database\n";
+        $db->addCourse($course);
     }
-    return $env_vals;
+    $courses = $alma_client->nextCourses($courses->nextOffset());
 }
 

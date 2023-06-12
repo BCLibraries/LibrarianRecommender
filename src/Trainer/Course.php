@@ -4,39 +4,27 @@ namespace BCLibraries\LibrarianRecommender\Trainer;
 
 class Course
 {
-    private string $id;
-    /** @var Reading[] */
-    private array $readings;
-    private string $name;
-    private string $code;
-
-    public function __construct(string $id, string $name, string $code)
-    {
-        $this->id = $id;
-        $this->name = $name;
-        $this->code = $code;
-    }
-
     /**
-     * @return Reading[]
+     * @param string $id
+     * @param string $name
+     * @param string $code
+     * @param Reading[] $readings
      */
-    public function getReadings(): array
+    public function __construct(readonly string $id,
+                                readonly string $name,
+                                readonly string $code,
+                                readonly array  $readings)
     {
-        return $this->readings;
     }
 
-    public function getName(): string
+    public function getDeptCode(): string
     {
-        return $this->name;
-    }
+        $uc_code = strtoupper($this->getCode());
+        if (preg_match('/^([A-Z]*)/', $uc_code, $matches)) {
+            return $matches[1];
+        } else {
+            return '';
+        }
 
-    public function getCode(): string
-    {
-        return $this->code;
-    }
-
-    public function addReading(Reading $reading): void
-    {
-        $this->readings[] = $reading;
     }
 }

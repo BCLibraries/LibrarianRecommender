@@ -6,49 +6,39 @@ class AlmaClient
 {
     const API_BASE_URL = 'https://api-na.hosted.exlibrisgroup.com/almaws/v1';
 
+    private APIClient $api_client;
     private string $apikey;
-    private \CurlHandle $curl;
 
-    /**
-     * @throws \Exception
-     */
-    public function __construct(string $apikey)
+    public function __construct(APIClient $api_client, string $apikey)
     {
+        $this->api_client = $api_client;
         $this->apikey = $apikey;
-
-        //  Initiate curl
-        $curl_handle = curl_init();
-        if ($curl_handle === false) {
-            throw new \Exception('Could not start cURL');
-        }
-        curl_setopt($curl_handle, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($curl_handle, CURLOPT_HTTPHEADER, array('Accept: application/json'));
-        $this->curl = $curl_handle;
     }
-
-    public function __destruct()
-    {
-        curl_close($this->curl);
-    }
-
 
     /**
      * @throws \Exception
      */
-    public function nextCourses(int $offset, int $limit = 100): CourseList
+    public function nextCourses(int $offset, int $limit = 50): CourseList
     {
         $query_params = [
             'direction' => 'ASC',
-            'order_by' => 'code,section',
-            'offset' => $offset,
-            'limit' => $limit
+            'order_by'  => 'code,section',
+            'offset'    => $offset,
+            'limit'     => $limit
         ];
-        $result = $this->sendRequest('courses', $query_params);
+        echo "fetching courses from $offset...";
+
+        $request = new APIRequest(self::API_BASE_URL, 'courses', $query_params, $this->apikey);
+        $result = $this->api_client->getDecodedJSON($request, 3);
         $has_more_courses = $result['total_record_count'] > $offset + $limit;
+
+        echo $has_more_courses ? "\n" : "final fetch\n";
 
         $courses = [];
         foreach ($result['course'] as $course_json) {
-            $courses[] = new Course($course_json['id'], $course_json['name'], $course_json['code']);
+            echo "load readings for {$course_json['name']}...\n";
+            $readings = $this->loadReadingList($course_json['id']);
+            $courses[] = new Course($course_json['id'], $course_json['name'], $course_json['code'], $readings);
         }
         return new CourseList($courses, $offset, $has_more_courses);
     }
@@ -56,6 +46,7 @@ class AlmaClient
     /**
      * @param string $course_id
      * @return Reading[]
+     * @throws \Exception
      */
     private function loadReadingList(string $course_id): array
     {
@@ -63,37 +54,29 @@ class AlmaClient
         $query_params = [
             'view' => 'full'
         ];
-        $result = $this->sendRequest($course_id, $query_params);
+        $request = new APIRequest(self::API_BASE_URL, "courses/$course_id", $query_params, $this->apikey);
+        $result = $this->api_client->getDecodedJSON($request, 2);
+
+        // Return an empty array if we can't find a reading list
+        if (!isset($result['reading_lists']) || !isset($result['reading_lists']['reading_list'])) {
+            return $readings;
+        }
+
+        // Build the reading list.
         foreach ($result['reading_lists']['reading_list'] as $reading_list) {
+
+            // Skip if there are no citations for some reason.
+            if (!isset($reading_list['citations']) || !isset($reading_list['citations']['citation'])) {
+                continue;
+            }
+
+            // Build a reading from each citation.
             foreach ($reading_list['citations']['citation'] as $citation) {
-                $readings[] = Reading::build($citation);
+                $reading = Reading::build($citation);
+                echo "\t...built {$reading->title}\n";
+                $readings[] = $reading;
             }
         }
         return $readings;
-    }
-
-    /**
-     * @throws \Exception
-     */
-    private function sendRequest(string $command, array $params, float $sleep_seconds = 1): array
-    {
-        $params['apikey'] = $this->apikey;
-        $query = http_build_query($params);
-        $full_url = self::API_BASE_URL . "/$command?$query";
-        curl_setopt($this->curl, CURLOPT_URL, $full_url);
-        $result = curl_exec($this->curl);
-        if ($result === false) {
-            throw new \Exception("Error sending request $full_url:" . curl_error($this->curl));
-        }
-        $decoded = json_decode($result, true);
-
-        if ($decoded === null) {
-            throw new \Exception("Error decoding JSON for $full_url");
-        }
-
-        // Sleep a bit to prevent spamming Alma.
-        usleep($sleep_seconds * 1000000);
-
-        return $decoded;
     }
 }
